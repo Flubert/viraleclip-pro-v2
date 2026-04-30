@@ -20,11 +20,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-        // ==================== STRATÉGIES DE TÉLÉCHARGEMENT YT-DLP ====================
+           // ==================== STRATÉGIES DE TÉLÉCHARGEMENT YT-DLP ====================
     const cookiesPath = path.join(process.cwd(), 'cookies.txt');
     const hasCookies = fs.existsSync(cookiesPath);
 
-    const strategies = [
+    const rawStrategies = [
       hasCookies
         ? `yt-dlp --cookies "${cookiesPath}" --no-warnings --no-playlist --max-filesize 200M -f "best[height<=720]/best" -o "${videoPath}" "${url}"`
         : null,
@@ -34,7 +34,9 @@ export async function POST(request: NextRequest) {
       `yt-dlp --no-warnings --no-playlist --max-filesize 250M --extractor-args "youtube:player_client=android,web" -o "${videoPath}" "${url}"`,
 
       `yt-dlp --no-warnings --no-playlist --max-filesize 300M -o "${videoPath}" "${url}"`,
-    ].filter((s): s is string => s !== null);   // ← Correction importante
+    ];
+
+    const strategies = rawStrategies.filter((s): s is string => s !== null);
 
     let success = false;
     let lastError = '';
@@ -43,7 +45,7 @@ export async function POST(request: NextRequest) {
       try {
         console.log(`Tentative de téléchargement ${i + 1}/${strategies.length}...`);
         
-        execSync(strategies[i], { stdio: 'inherit', timeout: 90000 });   // ← Plus d'erreur TS
+        execSync(strategies[i], { stdio: 'inherit', timeout: 90000 });
 
         if (fs.existsSync(videoPath) && fs.statSync(videoPath).size > 100000) {
           success = true;
@@ -53,6 +55,7 @@ export async function POST(request: NextRequest) {
       } catch (err: any) {
         lastError = err.message || err.toString();
         console.log(`Tentative ${i + 1} échouée.`);
+
         if (fs.existsSync(videoPath)) {
           try { fs.unlinkSync(videoPath); } catch (e) {}
         }
